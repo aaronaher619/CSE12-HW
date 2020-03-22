@@ -1,0 +1,193 @@
+/****************************************************************************
+
+Aaron Hernandez                                  Your name
+CS12 Spring 2017                                 Course name, quarter
+4/8/17                                           Today's date
+cs12xcb                                          Your cs12x login
+                                Assignment One
+
+File Name:      hw1.c
+Description:    This program tests functions to display output strings and 
+                numbers. 
+****************************************************************************/
+#include <stdio.h>
+
+#define COUNT ((long) (sizeof (long) << 1 )) /* number of hex digits to 
+                                                display */
+#define DECIMAL 10	/* to indicate base 10 */
+#define HEX 16		/* to indicate base 16 */
+
+/* Function prototypes */
+void baseout (long, long, FILE *);
+void decout (unsigned long, FILE *);
+void hexout (unsigned long, FILE *);
+void newline (FILE *);
+long writeline (const char *, FILE *);
+
+/* array used for ASCII conversion */
+const char digits[] = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+
+/*--------------------------------------------------------------------------
+Function Name:         List the function name.
+Purpose:               Say why the function exists in a sentence or two.
+Description:           Describe the underlying algorithm of how the function
+                       is implemented in a few sentences.
+Input:                 A list of the parameters with brief explanation of each.
+Result:                A list of possible outcomes when the function is called.
+                       Describe return value.
+--------------------------------------------------------------------------*/
+void baseout (long number, long base, FILE * stream) {
+
+  int hexCounter = 0;
+  int i = 0;
+  char num[16];
+  long newNum = number;
+  long modulo;
+  char c;
+  if (base == 16){
+    for(; hexCounter < 16; ++hexCounter){
+      modulo = newNum % base;
+      if (modulo == 0) { num[15-hexCounter] = '0';}
+      else if (modulo == 1) { num[15-hexCounter] = '1';}
+      else if (modulo == 2) { num[15-hexCounter] = '2';}
+      else if (modulo == 3) { num[15-hexCounter] = '3';}
+      else if (modulo == 4) { num[15-hexCounter] = '4';}
+      else if (modulo == 5) { num[15-hexCounter] = '5';}
+      else if (modulo == 6) { num[15-hexCounter] = '6';}
+      else if (modulo == 7) { num[15-hexCounter] = '7';}
+      else if (modulo == 8) { num[15-hexCounter] = '8';}
+      else if (modulo == 9) { num[15-hexCounter] = '9';}
+      else if (modulo == 10) { num[15-hexCounter] = 'A';}
+      else if (modulo == 11) { num[15-hexCounter] = 'B';}
+      else if (modulo == 12) { num[15-hexCounter] = 'C';}
+      else if (modulo == 13) { num[15-hexCounter] = 'D';}
+      else if (modulo == 14) { num[15-hexCounter] = 'E';}
+      else if (modulo == 15) { num[15-hexCounter] = 'F';}
+      newNum = newNum / base;
+    }
+  }
+  for (; i < 16; ++i){
+    c = num[i];
+    fputc(c, stream);
+  }
+
+}
+
+
+/*--------------------------------------------------------------------------
+Function Name:         List the function name.
+Purpose:               Say why the function exists in a sentence or two.
+Description:           Describe the underlying algorithm of how the function
+                       is implemented in a few sentences.
+Input:                 A list of the parameters with brief explanation of each.
+Result:                A list of possible outcomes when the function is called.
+                       Describe return value.
+--------------------------------------------------------------------------*/
+void decout (unsigned long number, FILE * stream) {
+  int counter = 0;
+  int i = 0;
+  char num[16];
+  long newNum = number;
+  long modulo;
+  char c;
+  int once = 1;
+  if (newNum == 0){
+    c = '0';
+    fputc(c, stream);
+    once = 0;
+    i = 16;
+    counter = 16;
+    return;
+  }
+  for(; counter < 16; ++counter){
+    modulo = newNum % 10;
+    if (modulo == 0) { num[15-counter] = '0';}
+    else if (modulo == 1) { num[15-counter] = '1';}
+    else if (modulo == 2) { num[15-counter] = '2';}
+    else if (modulo == 3) { num[15-counter] = '3';}
+    else if (modulo == 4) { num[15-counter] = '4';}
+    else if (modulo == 5) { num[15-counter] = '5';}
+    else if (modulo == 6) { num[15-counter] = '6';}
+    else if (modulo == 7) { num[15-counter] = '7';}
+    else if (modulo == 8) { num[15-counter] = '8';}
+    else if (modulo == 9) { num[15-counter] = '9';}
+    newNum = newNum / 10;
+  }
+  for(; once == 1; ++i){
+    if(num[i] == '0') {
+    }
+    if((num[i] != '0') || (i == 15)) {
+      once = 0;
+      break;
+    }
+  }
+  for (; i < 16; ++i){
+    c = num[i];
+    fputc(c, stream);
+  }
+}
+
+
+/*--------------------------------------------------------------------------
+Function Name:         hexout
+Purpose:               Prints a number in base 16 to the parameter FILE stream
+Description:           Goal is achieved via delegating to the baseout function
+Input:                 number:  the number to display
+                       stream:  where to display, likely stdout or stderr
+Result:                Number in base 16 is displayed.
+                       No return value.
+--------------------------------------------------------------------------*/
+void hexout (unsigned long number, FILE * stream) {
+
+	/* Output "0x" for hexidecimal. */
+	writeline ("0x", stream);
+	baseout (number, HEX, stream);
+}
+
+
+/*--------------------------------------------------------------------------
+Function Name:         List the function name.
+Purpose:               Say why the function exists in a sentence or two.
+Description:           Describe the underlying algorithm of how the function
+                       is implemented in a few sentences.
+Input:                 A list of the parameters with brief explanation of each.
+Result:                A list of possible outcomes when the function is called.
+                       Describe return value.
+--------------------------------------------------------------------------*/
+void newline (FILE * stream) {
+  fputc('\n', stream);
+}
+
+
+/*--------------------------------------------------------------------------
+Function Name:         List the function name.
+Purpose:               Say why the function exists in a sentence or two.
+Description:           Describe the underlying algorithm of how the function
+                       is implemented in a few sentences.
+Input:                 A list of the parameters with brief explanation of each.
+Result:                A list of possible outcomes when the function is called.
+                       Describe return value.
+--------------------------------------------------------------------------*/
+long writeline (const char * message, FILE * stream) {
+  int i = 0;
+  while (message[i] != '\0'){
+    fputc(message[i], stream);
+    i++;
+  }
+  return i;
+}
+
+
+int main (int argc, char *const* argv) {
+	writeline ("Hello World", stdout);
+	writeline ("Zdravei Sviat", stderr);
+	newline(stderr);
+	newline(stdout);
+	decout (123, stdout);
+	newline(stdout);
+	decout (0, stdout);
+	newline(stdout);
+	hexout (0xFEEDDAD, stdout);
+	newline(stdout);
+	return 0;
+}
