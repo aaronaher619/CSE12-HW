@@ -1,0 +1,739 @@
+/****************************************************************************
+
+                                                              Aaron Hernandez
+                                                          CSE 12, Spring 2017
+                                                                 May 30, 2017
+                                                                      cs12xcb
+                               Assignment 8
+
+ File Name:      Tree.c
+
+ Description:    Creates a binary tree data structure to store UCSDStudents
+                 or Variables objects. Can turn on or off debug and can also
+                 insert, lookup and remove nodes which are the objects.
+ ****************************************************************************/
+#include <cstdlib>
+#include <string>
+#include "Tree.h"
+using namespace std;
+
+// messages
+static const char AND[] = " and ";
+static const char CHECK[] = " - Checking ";
+static const char COMPARE[] = " - Comparing ";
+static const char DEALLOCATE[] = " - Deallocating]\n";
+static const char INSERT[] = " - Inserting ";
+static const char REPLACE[] = " - Replacing ";
+static const char UPDATE[] = " - Updating ";
+
+template <class Whatever>
+int Tree<Whatever>::debug = 0;
+
+#ifndef TRUE
+#define TRUE 1
+#endif
+
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+#define THRESHOLD 2
+
+template <class Whatever>
+ostream & operator << (ostream &, const TNode<Whatever> &);
+
+//=========================================================================
+// struct TNode
+//
+// Description: Implements the TNode for a binary tree data structure.
+//     Each node contains two children, the left child which contains
+//     data "less than" the data of the current node, and the right child
+//     which contains data "greater than" the data of the current node.
+//
+// Data Fields:
+//     balance (long)            - left child's height - right child's height
+//     data  (Whatever)          - holds the data stored in the current node
+//     height (long)             - 1 + height of tallest child, or 0 for leaf
+//     left  (TNode<Whatever> *) - the left child
+//     occupancy (long &)        - how many TNodes there is in the tree
+//     right (TNode<Whatever> *) - the right child
+//     tree_count (unsigned long &) - The count of tree
+//
+// Public functions:
+//     Tree                - Constructor
+//     ~Tree               - Descructor
+//     delete_AllNodes     - deletes all the children of the current node
+//     Insert              - Inserts a Tnode in the tree 
+//     Lookup              - Looks up a TNode in the tree 
+//     ReplaceAndRemoveMax - Finds the TNode to be root
+//     Remove              - Removes a TNode from the tree
+//     SetHeightAndBalance - Sets the height and balance of every TNode
+//     Write_AllNodes      - Displays the current node and all its children
+//==========================================================================
+template <class Whatever>
+struct TNode {
+  long balance;
+  Whatever data;
+  long height;
+  TNode<Whatever> * left;
+  long & occupancy;
+  TNode<Whatever> * right;
+  unsigned long & tree_count;
+  
+/***************************************************************************
+ % Routine Name : TNode :: TNode  (public)
+ % File :         Tree.c
+ %
+ % Description :  Guarantee initialization of balance, data, height, left,
+ %                occupancy, right and tree_count. It also adds one to
+ %                occupancy.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be inserted.
+ % theTree            A reference to the Tree
+***************************************************************************/
+  TNode (const Whatever & element, Tree<Whatever> & theTree)
+  : balance (0), data (element), height (0), left (0),
+    occupancy (theTree.occupancy), right (0),
+    tree_count (theTree.tree_count)
+  {
+    ++occupancy;
+  }
+  
+/***************************************************************************
+ % Routine Name : TNode :: TNode  (public)
+ % File :         Tree.c
+ %
+ % Description :  Guarantee initialization of balance, data, height, left,
+ %                occupancy, right and tree_count. It also adds one to
+ %                occupancy.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be inserted.
+ % parentTNode        A reference to the parentTNode
+***************************************************************************/
+  TNode (const Whatever & element, TNode<Whatever> & parentTNode)
+  : balance (0), data (element), height (0), left (0),
+    occupancy (parentTNode.occupancy), right (0),
+    tree_count (parentTNode.tree_count)
+  {
+    ++occupancy;
+  }
+  
+/***************************************************************************
+ % Routine Name : TNode :: ~TNode  (public)
+ % File :         Tree.c
+ %
+ % Description :  Subtracts one from occupancy
+ %
+ ***************************************************************************/
+  ~TNode (void)
+  {
+    --occupancy;
+  }
+  
+/***************************************************************************
+ % Routine Name : TNode :: delete_AllTNodes (public)
+ % File :         Tree.c
+ %
+ % Description : This function deletes all the TNodes in the tree through
+ %               a traversal.
+ %
+ ***************************************************************************/
+  void delete_AllTNodes (void)
+  {
+    //go left
+    if (left)
+      left->delete_AllTNodes();
+    
+    //go right
+    if (right)
+      right->delete_AllTNodes();
+    
+    //Call deconstuctor for element
+    delete (this);    
+  }
+  
+  unsigned long Insert (const Whatever & element, TNode<Whatever> *& PointerInParent);
+  
+  // OPTIONAL TNode :: Lookup => uncomment if implementing recursively  
+  // unsigned long Lookup(Whatever & element) const;
+  
+/***************************************************************************
+ % Routine Name : TNode :: ReplaceAndremoveMax  (public)
+ % File :         Tree.c
+ %
+ % Description :  Replaces that TNode with the maximum TNode in its left
+ %                subtree to maintain the Tree structure.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % targetTNode        A reference to the targetTNode.
+ % PointerInParent    A pointer reference to the parentInParent
+***************************************************************************/
+  void ReplaceAndRemoveMax (TNode<Whatever> & targetTNode,
+			    TNode<Whatever> *& PointerInParent)
+  {
+    TNode<Whatever> * node; //Place holder
+
+    //Checks Debug
+    if(Tree<Whatever>::debug){
+      cerr << TREE << tree_count << CHECK << (const char*)PointerInParent->data << "]\n";
+    }
+
+    //Once Max Node if found then do appropiate actions
+    if(PointerInParent->right == NULL){
+
+      //Checks Debug
+      if(Tree<Whatever>::debug){
+	cerr << TREE << tree_count << REPLACE << (const char*)targetTNode.data << "]\n";
+      }
+
+      //Sets the replacing node to the Max node and corrects the childs
+      targetTNode.data = PointerInParent->data;
+      node = PointerInParent->left;
+      delete (PointerInParent);
+      PointerInParent = node;     
+    }
+
+    else{
+      //Go right till there is no more nodes
+      ReplaceAndRemoveMax(targetTNode, PointerInParent->right);
+      SetHeightAndBalance(PointerInParent);
+    }
+    //SetHeightAndBalance(PointerInParent);
+  }
+  
+/***************************************************************************
+ % Routine Name : TNode :: Remove  (public)
+ % File :         Tree.c
+ %
+ % Description :  This searches for the node to remove until found and then
+ %                It checks if it is going to remove a node with zero childs,
+ %                1 child or 2 childs. Then it does the appropiate steps to
+ %                remove the node.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % elementTNode       A reference to the elementTNode to be removed.
+ % PointerInParent    A pointer reference to the parentInParent
+ % fromSHB            A long of whether it was called from SHB or not
+***************************************************************************/
+  unsigned long Remove (TNode<Whatever> & elementTNode,
+			TNode<Whatever> *& PointerInParent,
+			long fromSHB = FALSE)
+  {
+    long retval; //capture return value
+    TNode<Whatever> * node; //Place holder
+
+    //Checks for debug                                                      
+    if(Tree<Whatever>::debug){
+      cerr << TREE << tree_count << COMPARE << (const char*)elementTNode.data << AND << (const char*)PointerInParent->data << "]\n";
+    }
+
+    //Check if the elementTNode is the PointerInParent
+    // wich means there is no need to search    
+    if(elementTNode.data == PointerInParent->data){
+
+      //Checks if there is no childs
+      if((PointerInParent->left == NULL) && (PointerInParent->right == NULL)){
+	  elementTNode.data = PointerInParent->data;
+	  delete (PointerInParent);
+	  PointerInParent = NULL;
+	  return 1;
+	}
+
+      //Checks if there is one child
+      //Case If one child but on the right 
+	else if(PointerInParent->left == NULL){
+	  elementTNode.data = PointerInParent->data;
+	  node = PointerInParent->right;
+	  delete (PointerInParent);
+	  PointerInParent = node;
+	  return 1;
+	}
+
+	//Case if one child but on the left
+	else if(PointerInParent->right == NULL){
+	  elementTNode.data = PointerInParent->data;
+	  node = PointerInParent->left;
+	  delete (PointerInParent);
+	  PointerInParent = node;
+	  return 1;
+	}
+
+      //Case if there are two childs      
+	else{
+	  TNode<Whatever> * node = new TNode<Whatever>(PointerInParent->data, *PointerInParent);
+	  ReplaceAndRemoveMax(elementTNode, PointerInParent->left);
+	  PointerInParent->data = elementTNode.data;
+	  elementTNode.data = node->data;
+	  delete(node);
+	  return 1;
+	}
+    }
+  
+    //Condition if element needs to go right                                
+    else if(elementTNode.data > PointerInParent->data){
+      
+      //Check if the PointerInParent's right is empty and                       
+      //if so returns false                       
+      if(PointerInParent->right == NULL){
+	return 0;
+      }
+
+      //If not call remove again with updated PointerInParent                 
+      else{
+	retval = Remove(elementTNode, PointerInParent->right, 0);
+      }
+    }
+    
+    //else the element goes left                                            
+    else{
+      
+      //Check if the currentNode's left is empty and                        
+      //if so returns false                       
+      if(PointerInParent->left == NULL){
+	return 0;
+      }
+
+      //If not call remove again with updated PointerInParent                   
+      else{
+	retval = Remove(elementTNode, PointerInParent->left, 0);
+      }
+    }
+    //Adjusts height and balance
+    if((fromSHB == 0) && (PointerInParent != NULL)){
+      SetHeightAndBalance(PointerInParent);
+    }
+    return retval;
+  }
+  
+/***************************************************************************
+ % Routine Name : TNode :: SetHeightAndBalance  (public)
+ % File :         Tree.c
+ %
+ % Description :  Updates the height and balance of the current TNode.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % PointerInParent    A pointer reference to the parentInParent
+***************************************************************************/
+  void SetHeightAndBalance (TNode<Whatever> *& PointerInParent)
+  {    
+    //Checks Debug                                                              
+    if(Tree<Whatever>::debug){
+      cerr << TREE << "1"  << UPDATE << (const char*)PointerInParent->data << "]\n";
+    }
+
+    //keeps track of the tallest child of a parent
+    // and of left and right childs
+    long tallestChild;
+    TNode * left = PointerInParent->left;
+    TNode * right = PointerInParent->right;
+    
+    long leftH;//left height
+    long rightH;//right height
+    
+    //Checks if there are no childs
+    if((left == NULL) && (right == NULL)){
+      leftH = rightH = -1;
+      tallestChild = -1;
+    }
+
+    //Checks if there is no left child
+    //If so it sets tallest child to the right
+    else if(left == NULL) {
+      rightH = tallestChild = right->height;
+      leftH = -1;
+    }
+    
+    //Checks if there is no right child
+    //If so it sets tallest child to the left
+    else if (right == NULL) {
+      leftH = tallestChild = left->height;
+      rightH = -1;
+    }
+    
+    //Else pick the tallest child
+    else {
+      leftH = left->height;
+      rightH = right->height;
+      tallestChild = (leftH > rightH) ? leftH : rightH;
+    }
+    
+    //Adjusts the height
+    PointerInParent->height = 1 + tallestChild;
+    
+    //Adjusts the balance
+    PointerInParent->balance = leftH - rightH;
+
+    //Threshold Check
+    if((PointerInParent->balance > 2) || (PointerInParent->balance < (-2))){
+
+      //Saves the node then removes it and reinserts it
+      TNode<Whatever> * node = new TNode<Whatever> (PointerInParent->data, *this);
+      Remove(*node, PointerInParent, 1);
+      Insert(node->data, PointerInParent);
+      delete (node);
+    }
+  }
+  
+
+
+
+
+  ostream & Write_AllTNodes (ostream & stream) const
+  {
+    if (left){
+      left->Write_AllTNodes (stream);
+    }
+    
+    stream << *this;
+    
+    if (right){
+      right->Write_AllTNodes (stream);
+    }
+
+    return stream;
+  }
+};
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Set_Debug_On (public)
+ % File :         Tree.c
+ %
+ % Description : This function sets debug to 1 or true.
+ %
+ ***************************************************************************/
+template <class Whatever>
+void Tree<Whatever> :: Set_Debug_On (void){
+  debug = 1;
+}
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Set_Debug_Off (public)
+ % File :         Tree.c
+ %
+ % Description : This function sets debug to 0 or false.
+ %
+ ***************************************************************************/
+template <class Whatever>
+void Tree<Whatever> :: Set_Debug_Off (void){  
+  debug = 0;
+}
+
+/***************************************************************************
+ % Routine Name : TNode<Whatever> :: Insert (public)
+ % File :         Tree.c
+ %
+ % Description : This function checks for debug and then sees if the element
+ %               should go right or left till it finds an empty sopt on the
+ %               tree and inserts it.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be inserted.
+ % PointerInParent    Pointer reference to the parent TNode
+ % <return>           true or false whether it was inserted or not.
+ ***************************************************************************/
+template <class Whatever>
+unsigned long TNode<Whatever> :: Insert (const Whatever & element, TNode<Whatever> *& PointerInParent)
+{  
+  //Checks for debug                                                      
+  if(Tree<Whatever>::debug){
+    cerr << TREE << "1" << COMPARE << (const char*)element << AND << (const char *)PointerInParent->data << "]\n";
+  }
+  
+  //Condition if element needs to go right                                
+  if(element > PointerInParent->data){
+    
+    //Check if the PointerInParent's right is empty and                        
+    //if so integrates element                       
+    if(PointerInParent->right == NULL){
+      
+      PointerInParent->right = new TNode <Whatever> (element, *PointerInParent);
+
+      //Checks for debug     
+      if(Tree<Whatever>::debug){
+	cerr << TREE << tree_count << INSERT << (const char*)element << "]\n";
+      }
+
+    }
+    
+    //If not call insert again with updated PointerInParent
+    else{
+      Insert(element, PointerInParent->right);
+    }
+  }
+  
+  //else the element goes left                                            
+  else{
+    
+    //Check if the PointerInPerent's left is empty and                        
+    //if so integrates element                       
+    if(PointerInParent->left == NULL){
+      PointerInParent->left = new TNode <Whatever> (element, *PointerInParent);
+
+      //Checks for debug                                       
+      if(Tree<Whatever>::debug){
+	cerr << TREE << "1" << INSERT << (const char*)element << "]\n";
+      }
+
+    }
+    
+    //If not call insert again with updated PointerInParent                    
+    else{
+      Insert(element, PointerInParent->left);
+    }
+  }
+
+  //Adjusts the height and balance
+  SetHeightAndBalance(PointerInParent);
+
+  //return true
+  return 1;
+}
+
+
+
+
+template <class Whatever>
+ostream & operator << (ostream & stream, const TNode<Whatever> & nnn)
+{
+  stream << "at height:  :" << nnn.height << " with balance:  "
+	 << nnn.balance << "  ";
+  return stream << nnn.data << "\n";
+}
+
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Insert (public)
+ % File :         Tree.c
+ %
+ % Description : This function inserts the element if the tree is empty else
+ %               it delegates the insert job to TNode's insert function.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be inserted.
+ % <return>           true or false whether it was inserted or not.
+ ***************************************************************************/
+template <class Whatever>
+unsigned long Tree<Whatever> :: Insert (const Whatever & element)
+{ 
+  //Cretes a new node with element if list is empty  
+  if(occupancy == 0){
+    root = new TNode <Whatever> (element, *this);
+
+    //Checks for debug             
+    if(debug){                                                                  
+      cerr << TREE << tree_count << INSERT << (const char*)element << "]\n"; 
+    }                   
+  }
+  
+  //Else delegate the insert to TNode's insert
+  else{
+    root->Insert(element, root);
+  }
+  
+  //return true
+  return 1;
+}
+
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Lookup (public)
+ % File :         Tree.c
+ %
+ % Description : This function returns false if the tree is empty otherwise
+ %               its starts the lookup process at root and moves on through
+ %               till it finds the element or a empty space.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be lookedup.
+ % <return>           true or false whether it was found or not.
+ ***************************************************************************/
+template <class Whatever>
+unsigned long Tree<Whatever> :: Lookup (Whatever & element) const
+{
+  //If the tree is empty then return false  
+  if(occupancy == 0){
+    return 0;                   
+  }
+  
+  //Sets the currentNode to root
+  TNode<Whatever> * currentNode = root;
+
+  //Main loop to find element
+  while(1){
+    
+    //Checks for debug
+    if(debug) {
+      cerr << TREE << tree_count << COMPARE << (const char *)element << AND << (const char *)currentNode->data << "]\n";
+    }
+    
+    //Checks if element found and if so return true
+    if(element == currentNode->data) {
+      element = currentNode->data;
+      return 1;
+    }
+    
+    //Condition if element needs to go right                                
+    if(element > currentNode->data){
+      
+      //Check if the currentNode's right is empty and                        
+      //if so return false
+      if(currentNode->right == NULL){
+	return 0;
+      }
+      
+      //If not empty reset currentNode to the right node                     
+      else{
+	currentNode = currentNode->right;
+      }
+    }
+    
+    //else the element goes left                                            
+    else{
+      
+      //Check if the currentNode's left is empty and                        
+      //if so returns false
+      if(currentNode->left == NULL){
+	return 0;
+      }
+      
+      //If not empty reset currentNode to the left node                    
+      else{
+	currentNode = currentNode->left;
+      }
+    }
+  }//matches While loop
+}// end of Lookup
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Remove (public)
+ % File :         Tree.c
+ %
+ % Description : This function returns false if the tree is empty otherwise
+ %               delegates the remove job to TNode's remove function
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % -------------------------------------------------------------------------
+ % element            A reference to the element to be removed.
+ % <return>           true or false whether it was removed or not.
+ ***************************************************************************/
+template <class Whatever>
+unsigned long Tree<Whatever> :: Remove (Whatever & element)
+{
+  long retval; //capture return of Remove
+  TNode <Whatever> node = TNode <Whatever>(element, *this);
+  //If the tree is empty then return false  
+  if(occupancy == 0){
+    return 0;                   
+  }
+
+  //Else delegate the remove to TNode's remove
+  else{
+    retval = root->Remove(node, root, 0);
+  }
+
+  //set the element to the node data
+  element = node.data;
+
+  //return retval
+  return retval;
+}
+
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Tree  (public)
+ % File :         Tree.c
+ %
+ % Description :  Guarantee initialization of occupancy and root. It also
+ %                initializes the tree_count using a static counter.
+ ***************************************************************************/
+template <class Whatever>
+Tree<Whatever> :: Tree (void): occupancy (0), root (NULL)
+
+{
+  static long counter;
+  tree_count = ++counter;
+
+  //Debug Check
+  if(debug)
+    {
+      cerr << TREE << tree_count << ALLOCATE;
+    }
+}
+
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: ~Tree  (public)
+ % File :         Tree.c
+ %
+ % Description :  deallocates memory associated with the Tree.  It
+ %                will also delete all the memory of the elements within
+ %                the table.
+ ***************************************************************************/
+template <class Whatever>
+Tree<Whatever> :: ~Tree (void)
+{
+  //Checks debug
+  if(debug)
+    {
+      cerr << TREE << tree_count << DEALLOCATE;
+    }
+  
+  //Calls delete_AllTNode
+  if(root)
+    {
+      root->delete_AllTNodes();
+    }
+} //end ~Tree
+
+
+/***************************************************************************
+ % Routine Name : Tree<Whatever> :: Write (public)
+ % File :         Tree.c
+ %
+ % Description : This function will output the contents of the Tree table
+ %               to the stream specificed by the caller.  The stream could be
+ %               cerr, cout, or any other valid stream.
+ %
+ % Parameters descriptions :
+ %
+ % name               description
+ % ------------------ ------------------------------------------------------
+ % stream             A reference to the output stream.
+ % <return>           A reference to the output stream.
+ ***************************************************************************/
+template <class Whatever>
+ostream & Tree<Whatever> :: Write (ostream & stream) const
+{
+  stream << "Tree " << tree_count << ":\n"
+	 << "occupancy is " << occupancy << " elements.\n";
+  
+  return (root) ? root->Write_AllTNodes (stream) : stream;
+}

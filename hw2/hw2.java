@@ -1,0 +1,527 @@
+/**
+ *Aaron Hernandez A12623880 CS12 2017 Spring
+ * The hw2 class is a direct port of hw2.c to java.
+ * As you already know in java when you pass literal strings like
+ * <P>
+ *   writeline("a literal string\n", stream);
+ * <P>
+ * in C is considered a char[], but in java it's automatically
+ * converted and treated as a String object.  Therefore 
+ * the function writeline accepts literal strings and 
+ * String types.  The getaline function returns a String type.
+ */
+
+import java.io.*;        // System.in and System.out
+import java.util.*;      // Stack
+
+class MyLibCharacter {
+    private Character character;
+    
+    public MyLibCharacter (int ch) {
+	character = new Character ( (char) ch );
+    }
+    
+    public char charValue () {
+	return character.charValue ();
+    }
+    
+    public String toString () {
+	return "" + character;
+    }
+}
+
+public class hw2 {
+    private static final int ASCII_ZERO = 48;
+    
+    private static final int CR = 13;		// Carriage Return
+    private static final int MAXLENGTH = 80;	// Max string length
+    
+    private static final int EOF = -1;		// process End Of File
+    
+    private static final long COUNT = 16;		// # of hex digits
+    
+    private static final long DECIMAL = 10;		// to indicate base 10
+    private static final long HEX = 16;		// to indicate base 16
+    
+    private static final char digits[] = 	// for ASCII conversion
+	new String("0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ").toCharArray();
+    
+    private static final String DEBUG_GETALINE = 
+	"[*DEBUG:  The length of the string just entered is ";
+    
+    private static final String DIGIT_STRING = "digit ";
+    private static final String REENTER_NUMBER ="\nPlease reenter number: ";
+    private static final String OUT_OF_RANGE = " out of range!!!\n";
+    private static final String CAUSED_OVERFLOW = " caused overflow!!!\n";
+    private static final String DEBUG_WRITELINE =
+	"\n[*DEBUG:  The length of the string displayed is ";
+    
+    private static Stack<MyLibCharacter> InStream =
+	new Stack<MyLibCharacter>();
+    
+    private static boolean debug_on = false;
+    private static long hexCounter = 0; // counter for the number hex digits
+    
+    /**
+     * Takes in a positive number and displays in a given base.
+     *
+     * @param    Numeric value to be displayed.
+     * @param    Base to used to display number.
+     * @param    Where to display, likely System.out or System.err.
+     */
+    private static void baseout (long number, long base, PrintStream stream) {
+	char[] num = new char[16];
+	long newNum = number;
+
+	//If base is in decimal then run decout instead
+	if (base == 10){
+	    decout(number, stream);
+	    return;
+	}
+
+	//If base is 16 then print number in hexadecimal
+	if ((base != 10) || (base ==16)){
+	    long modulo;
+
+	    //runs loop for reading the number and turning it into hex base and stooing the
+	    //hex number into a chare array
+	    for(int hexCounter =0; hexCounter < 16; ++hexCounter){
+		modulo = newNum % base;
+		if (modulo == 0) { num[num.length-1-hexCounter] = '0';}
+		else if (modulo == 1) { num[num.length-1-hexCounter] = '1';}
+		else if (modulo == 2) { num[num.length-1-hexCounter] = '2';}
+		else if (modulo == 3) { num[num.length-1-hexCounter] = '3';}
+		else if (modulo == 4) { num[num.length-1-hexCounter] = '4';}
+		else if (modulo == 5) { num[num.length-1-hexCounter] = '5';}
+		else if (modulo == 6) { num[num.length-1-hexCounter] = '6';}
+		else if (modulo == 7) { num[num.length-1-hexCounter] = '7';}
+		else if (modulo == 8) { num[num.length-1-hexCounter] = '8';}
+		else if (modulo == 9) { num[num.length-1-hexCounter] = '9';}
+		else if (modulo == 10) { num[num.length-1-hexCounter] = 'A';}
+		else if (modulo == 11) { num[num.length-1-hexCounter] = 'B';}
+		else if (modulo == 12) { num[num.length-1-hexCounter] = 'C';}
+		else if (modulo == 13) { num[num.length-1-hexCounter] = 'D';}
+		else if (modulo == 14) { num[num.length-1-hexCounter] = 'E';}
+		else if (modulo == 15) { num[num.length-1-hexCounter] = 'F';}
+		newNum = newNum / base;
+	    }
+	}
+	
+	//sends the char array to get printed
+	for (int i = 0; i < 16; ++i){
+	    fputc(num[i], stream);
+	}
+    }
+    
+    /**
+     * Removes any characters in the stdin buffer by repeatedly calling fgetc until a newline character is detected
+     *
+     * @param    The Character is the most recent character read from stdin.
+     */
+    public static void clrbuf (int character) {
+
+	//reinitializes character  to the most recent character from stdin until \n is reached
+	while(true){
+	    if (character == '\n'){ break;}
+	    else {character = (char) fgetc(System.in);}
+	}   
+    }
+    
+    
+    /**
+     * Reads the number in System.in and stores it into a int 
+     *
+     * @return    The number read from System.in
+     */
+
+    public static long decin() {
+	//The main loop that starts the reading the first char from System.in
+	//restarts everytime there is an error
+	while(true){
+	    char c1  = (char) fgetc(System.in);
+
+	    //checks if nothing was entered
+	    if (c1 == '\n') { return 0;}
+
+	    //checks for ^d
+	    if((int) c1 == 0xFFFF){
+		return EOF;
+	    }
+	
+	    //checks for out of range chars
+	    if (((int) c1 < 48) || ((int) c1 > 57)){
+		digiterror((int) c1, OUT_OF_RANGE);
+		continue;
+	    }
+
+	    int sum = ((int) c1) - 48;
+	    
+	    //The inner loop that continues reading the rest of the chars from System.in
+	    while(true){
+		int oldSum;		
+		
+		char c  =  (char) fgetc(System.in);
+		int nextNum = ((int) c) - 48;
+		c1 = c;
+		
+		//cheacks for the end of the input steam and returns the final number
+		if (c  == '\n') { 
+		    return sum;
+		}
+
+		//checks for out of range int			
+		if ((nextNum < 0) || (nextNum > 9)){
+		    digiterror((nextNum + 48), OUT_OF_RANGE);
+		    break;
+		}
+		
+		oldSum = sum;
+		sum = sum * 10;
+	    
+		//checks for Overflow
+		if (oldSum != (sum/10)){
+		    digiterror((nextNum) + 48, CAUSED_OVERFLOW);
+		    break;
+		}
+		sum = sum + nextNum;
+	    }
+	}
+    }
+    
+
+    /**
+     * Takes in a positive number and displays it in decimal.
+     *
+     * @param    positive numeric value to be displayed.
+     * @param    Where to display, likely System.out or System.err.
+     */
+    public static void decout (long number, PrintStream stream) {
+	    int counter = 1;
+	    int i = 0;
+	    char num[] = new char[MAXLENGTH];
+	    long num1 = number;
+	    long modulo;
+	    char c;
+	    boolean once = true;
+
+	    //Checks if the number is zero and prints 0 then exits
+	    if (num1 == 0){
+		c = '0';
+		fputc(c, stream);
+		once = false;
+		i = MAXLENGTH;
+		counter = MAXLENGTH;
+		return;
+	    }
+
+	    //reads the number and converts it to an array of chars
+	    for(; counter <= MAXLENGTH; ++counter){
+		modulo = num1 % 10;
+		if (modulo == 0) { num[MAXLENGTH-counter] = '0';}
+		else if (modulo == 1) { num[MAXLENGTH-counter] = '1';}
+		else if (modulo == 2) { num[MAXLENGTH-counter] = '2';}
+		else if (modulo == 3) { num[MAXLENGTH-counter] = '3';}
+		else if (modulo == 4) { num[MAXLENGTH-counter] = '4';}
+		else if (modulo == 5) { num[MAXLENGTH-counter] = '5';}
+		else if (modulo == 6) { num[MAXLENGTH-counter] = '6';}
+		else if (modulo == 7) { num[MAXLENGTH-counter] = '7';}
+		else if (modulo == 8) { num[MAXLENGTH-counter] = '8';}
+		else if (modulo == 9) { num[MAXLENGTH-counter] = '9';}
+		num1 = num1 / 10;
+	    }
+
+	    //finds the index where the number represented by chars starts
+	    while(once){
+		if(num[i] == '0') {
+		    ++i;
+		    continue;
+		}
+		if((num[i] != '0') || (i == MAXLENGTH-1)) {
+		    once = false;
+		    break;
+		}
+	    }
+
+	    //sends the array of chars to print the number
+	    for (; i < MAXLENGTH; ++i){
+		c = num[i];
+		fputc(c, stream);
+	    }
+	}
+
+
+    /*--------------------------------------------------------------------------
+      Function Name:          digiterror
+      Purpose:                This function handles erroneous user input.
+      Description:            This function  displays and error message to the user,
+      and asks for fresh input.
+      Input:                  character:  The character that began the problem.
+      message:  The message to display to the user.
+      Result:                 The message is displayed to the user.
+      The result in progress needs to be set to 0 in
+      decin after the call to digiterror.
+      --------------------------------------------------------------------------*/
+    public static void digiterror (int character, String message) {
+	
+	/* handle error */
+	clrbuf (character);
+	
+	/* output error message */
+	writeline (DIGIT_STRING, System.err);
+	fputc ( (char)character, System.err);
+	writeline (message, System.err);
+	
+	writeline (REENTER_NUMBER, System.err);
+    }
+    
+    
+    /**
+     * Stores the input string into the message array and returns the length
+     *
+     * @param    An array of characters.
+     * @param    Max length of the array.
+     */
+    public static long getaline( char message[], int maxlength ) {
+	int i;
+	char c = (char) fgetc(System.in);
+
+	//Checks for ^d
+	if((int) c == 0xFFFF){
+	    return EOF;
+	}
+
+	//Adds the input string to the massage array until \n is detected
+	for(i = 0; c != '\n'; ++i){
+	    //checks if message array is at maxlength
+	    if (i == (maxlength-1)) {
+		clrbuf((char) fgetc(System.in));
+		break;
+	    }
+
+	    message[i] = c;
+	    c = (char) fgetc(System.in);
+	}
+	maxlength = i;
+	//Adds null at the end of the message array
+	message[i] = '\0';
+
+	//Adds the debug messages when debug_on is true
+	if (debug_on){
+	    for(int j = 0; j < DEBUG_GETALINE.length(); ++j){
+		fputc(DEBUG_GETALINE.charAt(j), System.err);
+	    }
+	    decout(i, System.err);
+	    fputc(']', System.err);
+	}
+	int length = i;
+	++i;
+
+	//resets the array to only spaces
+	for (; i < message.length; ++i){
+	message[i] = ' ';
+	}
+
+	return length;
+    }
+    
+    
+    /**
+     * Takes in a positive number and displays it in hex.
+     *
+     * @param    A positive numeric value to be displayed in hex.
+     * @param    Where to display, likely System.out or System.err.
+     */
+    public static void hexout (long number, PrintStream stream) {
+	
+	// Output "0x" for hexidecimal.
+	writeline ("0x", stream);
+	baseout (number, HEX, stream);
+    }
+    
+    
+    /**
+     * Returns a character from the input stream.
+     *
+     * @return  <code>char</code> 
+     */
+    public static int fgetc(InputStream stream) {
+	
+	char ToRet = '\0';
+	
+	// Check our local input stream first.
+	//   If it's empty read from System.in
+	if (InStream.isEmpty ()) {
+	    
+	    try {
+		// Java likes giving the user the
+		// CR character too. Dumb, so just 
+		// ignore it and read the next character
+		// which should be the '\n'.                  
+		ToRet = (char) stream.read ();
+		if (ToRet == CR)
+		    ToRet = (char) stream.read ();
+		
+		// check for EOF
+		if ((int) ToRet == 0xFFFF)
+		    return EOF;
+	    }
+	    
+	    // Catch any errors in IO.
+	    catch (EOFException eof) {
+		
+		// Throw EOF back to caller to handle
+		return EOF;
+	    }
+	    
+	    catch (IOException ioe) {
+		
+		writeline ("Unexpected IO Exception caught!\n",
+			   System.out);
+		writeline (ioe.toString (), System.out);
+	    }
+	    
+	}
+	
+	// Else just pop it from the InStream.
+	else
+	    ToRet = ((MyLibCharacter) InStream.pop ()).charValue ();
+	return ToRet;
+    }
+    
+
+    /**
+     * Displays a single character.
+     *
+     * @param    Character to display.
+     */
+    public static void fputc(char CharToDisp, PrintStream stream) {
+	
+	// Print a single character.
+	stream.print (CharToDisp);   
+	
+	// Flush the system.out buffer, now. 
+	stream.flush ();
+    }
+    
+
+    /**
+     * Prints out a newline character.
+     * @param    Where to display, likely System.out or System.err.
+     *
+     */
+    public static void newline ( PrintStream stream ) {
+	fputc('\n', System.out);
+    }
+    
+    
+    /**
+     * Prints out a string.
+     *
+     * @param    A string to print out.
+     * @param    Where to display, likely System.out or System.err.
+     * @return     <code>int</code> The length of the string.
+     */
+    public static long writeline (String message, PrintStream stream) {
+	//char c[] = new char[message.length()];
+	for(int i = 0; i < message.length(); ++i){
+	    //c[i] = message.charAt(i);
+	    fputc(message.charAt(i), System.out);
+	}
+
+	//Prints the debug message
+	if(debug_on){
+	    for(int j = 0; j < DEBUG_WRITELINE.length(); ++j){
+                fputc(DEBUG_WRITELINE.charAt(j), System.err);
+            }
+	    decout(message.length(), System.err);
+	    fputc(']', System.err);
+	    newline(System.err);
+	}
+
+	return message.length();
+    }
+
+
+    /**
+     * Places back a character into the input stream buffer.
+     *
+     * @param    A character to putback into the input buffer stream.
+     */
+    public static void ungetc (int ToPutBack) {
+	
+	// Push the char back on our local input stream buffer.
+	InStream.push (new MyLibCharacter (ToPutBack));
+    }
+    
+    
+    public static void main( String[] args ) {
+	
+	char buffer[] = new char[MAXLENGTH];       /* to hold string */
+	
+	long number;                  /* to hold number entered */
+	long strlen;                  /* length of string */
+	long base;		      /* to hold base entered */
+	
+	/* initialize debug states */
+	debug_on = false;
+	
+	/* check command line options for debug display */
+	for (int index = 0; index < args.length; ++index) {
+	    if (args[index].equals("-x"))
+		debug_on = true;
+	} 
+	
+	/* infinite loop until user enters ^D */
+		while (true) {
+			writeline ("\nPlease enter a string:  ", System.out);
+
+			strlen = getaline (buffer, MAXLENGTH);
+			newline (System.out);
+
+			/* check for end of input */
+			if ( EOF == strlen )
+				break;
+
+			writeline ("The string is:  ", System.out);
+			writeline ( new String(buffer), System.out);
+
+			writeline ("\nIts length is ", System.out);
+			decout (strlen, System.out);
+			newline (System.out);
+
+			writeline ("\nPlease enter a decimal number:  ", System.out);
+			if ((number = decin ()) == EOF)
+				break;
+
+			writeline ("\nPlease enter a decimal base:  ", System.out);
+			if ((base = decin ()) == EOF)
+				break;
+
+			/* correct bases that are out of range */
+			if (base < 2)
+				base = 2;
+			else if (base > 36)
+				base = 36;
+
+			newline (System.out);
+
+			writeline ("Number entered in base ", System.out);
+			decout (base, System.out);
+			writeline (" is: ", System.out);
+			baseout (number, base, System.out);
+
+			writeline ("\nAnd in decimal is:  ", System.out);
+			decout (number, System.out);
+
+			writeline ("\nAnd in hexidecimal is:  ", System.out);
+			hexout (number, System.out);
+
+			writeline ("\nNumber entered multiplied by 8 is:  ", System.out);
+			decout (number << 3, System.out);
+			writeline ("\nAnd in hexidecimal is:  ", System.out);
+			hexout (number << 3, System.out);
+
+			newline (System.out);
+		}
+	}
+}

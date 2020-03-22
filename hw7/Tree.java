@@ -1,0 +1,420 @@
+/****************************************************************************
+
+                                                Aaron Hernandez
+                                                CSE 12, Spring 2017
+                                                May 17, 2017
+                                                cs12xcb
+                              Assignment 7
+
+File Name:      Tree.java
+Description:    Creates a binary tree data stucture to store UCSDStudents
+                or Variables objects. Can turn on or off debug and can also
+                insert, lookup and remove nodes which are the objects.
+
+****************************************************************************/
+public class Tree<Whatever extends Base> extends Base {
+
+        /* data fields */
+        private TNode root;
+        private long occupancy; 
+        private String treeName;
+
+        /* debug flag */
+        private static boolean debug;
+
+        /* debug messages */
+        private static final String ALLOCATE = " - Allocating]\n";
+        private static final String AND = " and ";
+        private static final String COMPARE = " - Comparing ";
+        private static final String INSERT = " - Inserting ";
+        private static final String TREE = "[Tree ";
+
+	/**
+         * Tree constructor method. It initializes memory associated.
+	 *
+	 *@param name The name of the tree
+         */
+        public Tree (String name) {
+
+	    //Initializes Memory
+	    treeName = name;
+	    occupancy = 0;
+	    root = null;
+
+	    //Debug Check
+	    if(debug){
+		System.err.print(TREE + treeName + ALLOCATE);
+	    }
+        } // end: Tree
+
+	/**
+         * Turns debug off
+         */
+        public static void debugOff () {
+	    debug = false;
+        }
+
+	/**
+         * Turns debug on
+         */
+        public static void debugOn () {
+	    debug = true;
+        }
+
+        /**
+         * Returns the tree's name
+	 *
+         * @return name of the tree
+         */
+        public String getName() {
+                return treeName;
+        } //end: getName
+ 
+	/**
+         * First it checks if tree is empty and if soinserts into 
+	 * tree and checks for debug. If it fails it then compares
+	 * the element against other nodes to find a place to
+	 * insert it. It then goes back up the tree and adjusts
+	 * the heights and balances. Once done it returns success or fail.        
+	 *
+	 * @param element The element to be inserted
+	 *
+         * @return true or false of whether it was inserted or not
+         */
+        public boolean insert (Whatever element) {
+
+	    //Cretes a new node with element and current Node
+	    TNode node = new TNode (element);
+	    TNode currentNode = root;
+
+	    //If tree is empty simply insert node 
+	    if (occupancy == 0){
+		root = node;
+		++occupancy;
+		++root.height;
+
+		//Checks for debug
+		if(debug){
+		    System.err.print(TREE + treeName + INSERT + element.getName() + "]\n");
+		}
+		return true;
+	    }
+	    
+	    //If tree is not empty loop
+	    else {
+		while(true){
+
+		     //Checks for debug
+		    if(debug){
+			System.err.print(TREE + treeName + COMPARE + element.getName() + AND + currentNode.data.getName() + "]\n");
+		    }
+
+		    //Condition if element needs to go left
+		    if(!(element.isGreaterThan(currentNode.data))){
+
+			//Check if the currentNode's left is empty and
+			//if so breaks from loop and integrates element
+			if(currentNode.left == null){
+			    currentNode.left = node;
+			    node.parent = currentNode;
+			    break;
+			}
+
+			//If not empty reset currentNode to the left node
+			else{
+			    currentNode = currentNode.left;
+			    continue;
+			}
+		    }
+		    
+		    //else the element goes right
+		    else{
+
+			//Check if the currentNode's left is empty and
+			//if so breaks from loop and integrates element
+		    	if(currentNode.right == null){
+			    currentNode.right = node;
+			    node.parent = currentNode;
+			    break;
+			}
+
+			//If not empty reset currentNode to the right node
+			else{
+			    currentNode = currentNode.right;
+			    continue;
+			}
+		    }
+		} //matches while loop
+	    }
+	    currentNode = node.parent; //update currentNode
+
+	    //Adjusts the Height and Balance
+	    while(true){
+
+		//keeps track of the tallest child of a parent
+		// and of left and right childs
+		long tallestChild;
+		TNode left = currentNode.left;
+		TNode right = currentNode.right;
+
+		long leftH; //left height
+		long rightH; //right height
+		
+		//Checks if there is no left child
+		if(left == null){
+		    rightH = tallestChild = right.height;
+		    leftH = -1;
+		}
+
+		//Checks if there is no right child
+		else if (right == null){
+		    leftH = tallestChild = left.height;
+		    rightH = -1;
+		}
+
+		//Else pick the tallest child
+		else{
+		    leftH = left.height;
+		    rightH = right.height;
+		    tallestChild = (leftH > rightH) ? leftH : rightH;
+		}
+
+		//Adjusts the height
+		currentNode.height = 1 + tallestChild;
+
+		//Adjusts the balance
+		currentNode.balance = leftH - rightH;
+
+		//Checks if currentNode is root and if so quits
+		if(currentNode.data.equals(root.data)){
+		    break;
+		}
+		
+		//Resets the currentNode
+		currentNode = currentNode.parent;
+
+	    }//Matches while loop
+	    
+	    //Checks for debug
+	    if(debug){
+		System.err.print(TREE + treeName + INSERT + element.getName() + "]\n");
+	    }
+
+	    ++occupancy;
+	    return true;
+        } //end: insert
+
+	/**
+         * This function checks if the tree is empty and
+	 * then checks for debug. Then it checks each                                                                                      
+	 * element till it finds the one it matches.                                                                                       
+         * Once found, it checks hasBeen Deleted and                                                                                       
+         * returns the found data.
+	 *
+	 * @param element The element to be looked up
+	 *
+         * @return the element if it was found or else null
+         */
+        public Whatever lookup (Whatever element) {
+                
+	    //Cretes a new node with element and current Node
+	    TNode currentNode = root;
+
+	    //If tree is empty return null 
+	    if (occupancy == 0){
+		return null;
+	    }	    
+	    
+	    //Checks Tree for element
+		while(true){
+
+		     //Checks for debug
+		    if(debug){
+			System.err.print(TREE + treeName + COMPARE + element.getName() + AND + currentNode.data.getName() + "]\n");
+		    }
+
+		    //Checks if element found
+		    if(element.equals(currentNode.data)){
+
+			if(currentNode.hasBeenDeleted){return null;} //checks if it has been deleted
+
+			return currentNode.data;
+		    }
+
+		    //Condition if element needs to go left
+		    else if(!(element.isGreaterThan(currentNode.data))){
+
+			//Check if the currentNode's left is empty and
+			//if so return null
+			if(currentNode.left == null){
+			    return null;
+			}
+
+			//If not empty reset currentNode to the left node
+			else{
+			    currentNode = currentNode.left;
+			}
+		    }
+		    
+		    //else the element goes right
+		    else{
+
+			//Check if the currentNode's left is empty and
+			//if so return null
+		    	if(currentNode.right == null){
+			    return null;
+			}
+
+			//If not empty reset currentNode to the right node
+			else{
+			    currentNode = currentNode.right;
+			}
+		    }
+		}//matches while
+	} //end: lookup
+
+	/**
+         * This function checks if the tree is empty and                                                                                   
+         * then checks for debug. Then it checks each                                                                                      
+         * element till it finds the one to delete.                                                                                        
+         * Once found, it removes one from occupancy,                                                                                      
+         * sets hasBeen Deleted to true and return the                                                                                     
+         * removed data.
+	 *
+	 * @param element The element to be removed
+	 *
+         * @return the element if it was removed or else null
+         */
+        public Whatever remove (Whatever element) {
+            
+	    //Cretes a new node with element and current Node
+	    TNode currentNode = root;
+
+	    //If tree is empty return null 
+	    if (occupancy == 0){
+		return null;
+	    }	    
+	    
+	    //Checks Tree for element
+		while(true){
+
+		     //Checks for debug
+		    if(debug){
+			System.err.print(TREE + treeName + COMPARE + element.getName() + AND + currentNode.data.getName() + "]\n");
+		    }
+
+		    //Checks if element found
+		    if(element.equals(currentNode.data)){
+			currentNode.hasBeenDeleted = true;
+			--occupancy;
+			return currentNode.data;
+		    }
+
+		    //Condition if element needs to go left
+		    else if(!(element.isGreaterThan(currentNode.data))){
+
+			//Check if the currentNode's left is empty and
+			//if so return null
+			if(currentNode.left == null){
+			    return null;
+			}
+
+			//If not empty reset currentNode to the left node
+			else{
+			    currentNode = currentNode.left;
+
+			}
+		    }
+		    
+		    //else the element goes right
+		    else{
+
+			//Check if the currentNode's left is empty and
+			//if so return null
+		    	if(currentNode.right == null){
+			    return null;
+			}
+
+			//If not empty reset currentNode to the right node
+			else{
+			    currentNode = currentNode.right;
+			}
+		    }
+		}//matches while
+	} //end: remove
+
+        /**
+         * Creates a string representation of this tree. This method first
+         * adds the general information of this tree, then calls the
+         * recursive TNode function to add all nodes to the return string 
+         *
+         * @return  String representation of this tree 
+         */
+        public String toString () {
+                String string = "Tree " + treeName + ":\noccupancy is ";
+                string += occupancy + " elements.";
+
+                if(root != null)
+                        string += root.writeAllTNodes();
+
+                return string;
+        }
+
+        private class TNode {
+	    
+	    public Whatever data;
+	    public TNode left, right, parent;
+	    public boolean hasBeenDeleted;
+	    
+	    /* left child's height - right child's height */
+	    public long balance;
+	    /* 1 + height of tallest child, or 0 for leaf */
+	    public long height;
+
+	    /**
+	     * TNode constuctor that initializes memory
+	     *
+	     * @param element The element to be made
+	     */
+	    public TNode (Whatever element) {
+		//Initializes Memory
+		data = element;
+		left = right = parent = null;
+		hasBeenDeleted = false;
+		balance = height = 0;
+	    } //end: TNode
+	    
+	    /**
+	     * Creates a string representation of this node. Information
+	     * to be printed includes this node's height, its balance,
+	     * and the data its storing.
+	     *
+	     * @return  String representation of this node 
+	     */
+	    
+	    public String toString () {
+		return "at height:  " + height + "  with balance: " +
+		    balance + "  " + data;
+	    }
+	    
+	    /**
+	     * Writes all TNodes to the String representation field. 
+	     * This recursive method performs an in-order
+	     * traversal of the entire tree to print all nodes in
+	     * sorted order, as determined by the keys stored in each
+	     * node. To print itself, the current node will append to
+	     * tree's String field.
+	     */
+	    public String writeAllTNodes () {
+		String string = "";
+		if (left != null)
+		    string += left.writeAllTNodes ();
+		if (!hasBeenDeleted) 
+		    string += "\n" + this;          
+		if (right != null)
+		    string += right.writeAllTNodes ();
+		
+		return string;
+	    }
+        }
+}

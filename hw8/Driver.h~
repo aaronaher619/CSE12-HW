@@ -1,0 +1,100 @@
+//=========================================================================
+// class UCSDStudent
+//
+// Description: Holds the info for a UCSD student including their name and
+//              number. Can assign a number and get the name. Also sets the
+//              hashcode and can check if another class object is equal to
+//              it. Lastly it has a write and deconstuctor method.
+//
+// Data Fields:
+//     name (char *)  - the student's name
+//     studentnum (long)  - the student number
+//
+// Public functions:
+//     UCSDStudent - Constructor for the class to set values
+//     ~UCSDStudent - Deconstuctor for the class
+//     operator char * - returns the student's name
+//     operator long - return the hash number
+//     long operator == - checks if the two objects are equal
+//========================================================================
+#ifndef DRIVER_H
+#define DRIVER_H
+
+#include <string.h>
+#include <iostream>
+#include <cstdlib>
+using namespace std;
+
+//=========================================================================
+// class UCSDStudent
+//
+// Description: Holds the info for a UCSD student including their name and
+//              number. Can assign a number and get the name. Also sets the
+//              hashcode and can check if another class object is equal to
+//              it. Lastly it has a write and deconstuctor method.
+//
+// Data Fields:
+//     name (char *)  - the student's name
+//     studentnum (long)  - the student number
+//
+// Public functions:
+//     UCSDStudent - Constructor for the class to set values
+//     ~UCSDStudent - Deconstuctor for the class
+//     operator char * - returns the student's name
+//     operator long - return the hash number
+//     long operator == - checks if the two objects are equal
+//========================================================================
+class UCSDStudent {
+	friend ostream & operator <<(ostream &, const UCSDStudent &);
+	char name[20];
+	long studentnum;
+public:
+
+	/**
+	 *Constuctor that sets the values of student
+	 *
+	 *@param name of student
+	 *@param Student's number to be set
+	 */
+	UCSDStudent(char * nm, long val = 0) :
+			name(strdup(*nm)), studentnum(val) {
+			  
+	}
+	
+
+	/**
+	 *Deconstuctor that frees the memory
+	 */
+	~UCSDStudent(void) {
+		free(name);
+	}
+
+	/**
+	 * This gets the name of the student
+	 *
+	 * @return  the student's name
+	 */
+	operator const char *(void) const {
+		return name;
+	}
+
+	/**
+	 * This checks if the two base objects are equal
+	 *
+	 * @return  true of false if equal
+	 */
+	long operator ==(const UCSDStudent & vvv) const {
+		return !strcmp(name, vvv.name);
+	}
+
+	/**
+	 * This checks which o fthe two objects is bigger
+	 *
+	 * @return  the object that is bigger
+	 */
+	long operator >(const UCSDStudent & vvv) const {
+		return (strcmp(name, vvv.name) > 0) ? 1 : 0;
+	}
+};
+
+#endif

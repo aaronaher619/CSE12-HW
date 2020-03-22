@@ -1,0 +1,252 @@
+#include <malloc.h>
+#include <stdio.h>
+#include "mylib.h"
+#include "stack.h"
+
+#define STACK_POINTER_INDEX (-1)        /* Index of next available space */
+#define STACK_SIZE_INDEX (-2)           /* Index of size of the stack */
+#define STACK_COUNT_INDEX (-3)          /* Index of which stack allocated */
+#define STACK_OFFSET 3  /* offset from allocation to where user info begins */
+
+/* catastrophic error messages */
+static const char DELETE_NONEXIST[] = "Deleting a non-existent stack!!!\n";
+static const char EMPTY_NONEXIST[] = "Emptying a non-existent stack!!!\n";
+static const char INCOMING_NONEXIST[] = 
+                        "Incoming parameter does not exist!!!\n";
+static const char ISEMPTY_NONEXIST[] = 
+                        "Isempty check from a non-existent stack!!!\n";
+static const char ISFULL_NONEXIST[] = 
+                        "Isfull check from a non-existent stack!!!\n";
+static const char NUM_NONEXIST[] = 
+                        "get_occupancy check from a non-existent stack!!!\n";
+static const char POP_NONEXIST[] = "Popping from a non-existent stack!!!\n";
+static const char POP_EMPTY[] = "Popping from an empty stack!!!\n"; 
+static const char PUSH_NONEXIST[] = "Pushing to a non-existent stack!!!\n";
+static const char PUSH_FULL[] = "Pushing to a full stack!!!\n";
+static const char TOP_NONEXIST[] = "Topping from a non-existent stack!!!\n";
+static const char TOP_EMPTY[] = "Topping from an empty stack!!!\n";
+static const char WRITE_NONEXIST_FILE[] = 
+                        "Attempt to write using non-existent file pointer!!!\n";
+static const char WRITE_NONEXIST_STACK[] = 
+                        "Attempt to write to a non-existent stack!!!\n";
+
+/* Debug messages */
+static const char ALLOCATED[] = "[Stack %ld has been allocated]\n";
+static const char DEALLOCATE[] = "[Stack %ld has been deallocated]\n";
+static const char HEXPOP[] = "[Stack %ld - Popping 0x%lx]\n";
+static const char HEXPUSH[] = "[Stack %ld - Pushing 0x%lx]\n";
+static const char HEXTOP[] = "[Stack %ld - Topping 0x%lx]\n";
+static const char POP[] = "[Stack %ld - Popping %ld]\n";
+static const char PUSH[] = "[Stack %ld - Pushing %ld]\n";
+static const char TOP[] = "[Stack %ld - Topping %ld]\n";
+
+/* static variable allocation */
+static int debug = FALSE; /* allocation of debug flag */
+static int stack_counter = 0; /* number of stacks allocated so far */
+
+/* Debug state methods */
+void debug_off (void) {
+        debug = FALSE;
+}
+
+void debug_on (void) {
+        debug = TRUE;
+}
+
+/* start of true stack code */
+void delete_Stack (Stack ** spp) {
+  if(*spp == NULL){
+    fprintf(stderr, DELETE_NONEXIST);
+    return;
+  }
+
+  if(spp == NULL){
+    fprintf(stderr, DELETE_NONEXIST);
+    return;
+  }
+
+  free(*spp - STACK_OFFSET);
+  *spp = NULL;
+  
+  if(debug){
+    fprintf(stderr, DEALLOCATE, (long) stack_counter);
+  }
+  stack_counter = 0;
+}
+
+void empty_Stack (Stack * this_Stack) {
+  if(this_Stack == NULL){
+    fprintf(stderr, EMPTY_NONEXIST);
+    return;
+  }
+
+  else{
+    this_Stack[STACK_POINTER_INDEX] = 0;
+  }
+}
+        
+long isempty_Stack (Stack * this_Stack) {
+  if(this_Stack == NULL){
+    fprintf(stderr, ISEMPTY_NONEXIST);
+    return 0;
+  }
+    
+  if (this_Stack[STACK_POINTER_INDEX] == 0){
+    return 1;
+  }
+
+  else{
+    return 0;
+  }
+}
+
+long isfull_Stack (Stack * this_Stack) {
+  if(this_Stack == NULL){
+    fprintf(stderr, ISFULL_NONEXIST);
+    return 0;
+  }
+
+  if ((this_Stack[STACK_POINTER_INDEX] + 1) >  this_Stack[STACK_SIZE_INDEX]){
+    return 1;
+  }
+  else{
+    return 0;
+  }
+}
+
+Stack * new_Stack (unsigned long stacksize) {
+  Stack* stack = (Stack*) malloc(((stacksize + STACK_OFFSET) * sizeof(long)));
+
+  if(debug && stack_counter){
+    fprintf(stderr, DEALLOCATE, (long)stack_counter);
+    stack_counter = 0;
+  }
+
+  ++stack_counter;
+  stack[STACK_POINTER_INDEX + STACK_OFFSET] = 0;
+  stack[STACK_SIZE_INDEX + STACK_OFFSET] = stacksize;
+  stack[STACK_COUNT_INDEX + STACK_OFFSET] = stack_counter;
+  
+  if(debug){
+    fprintf(stderr, ALLOCATED, (long)stack_counter);
+  }
+
+  return stack + STACK_OFFSET;
+}
+
+long get_occupancy (Stack * this_Stack) {
+  if(this_Stack == NULL){
+    fprintf(stderr, NUM_NONEXIST);
+    return 0;
+  }
+
+  return this_Stack[STACK_POINTER_INDEX];
+}
+
+long pop (Stack * this_Stack, long * item) {
+  if(this_Stack == NULL){
+    fprintf(stderr, POP_NONEXIST);
+    return 0;
+  }
+
+  if(item == NULL){
+    fprintf(stderr, INCOMING_NONEXIST);
+    return 0;
+  }
+
+  if(isempty_Stack(this_Stack)){
+    fprintf(stderr, POP_EMPTY);
+    return 0;
+  }
+
+  *item = this_Stack[this_Stack[STACK_POINTER_INDEX] - 1]; 
+  this_Stack[STACK_POINTER_INDEX] = this_Stack[STACK_POINTER_INDEX] - 1;  
+
+  if(debug){
+    fprintf(stderr, POP, this_Stack[STACK_COUNT_INDEX], *item);
+  }
+
+  return 1;
+}
+
+long push (Stack * this_Stack, long item) {
+  if(this_Stack == NULL){
+  fprintf(stderr, PUSH_NONEXIST);
+  return 0;
+  }
+
+  if(isfull_Stack(this_Stack)){
+    fprintf(stderr, PUSH_FULL);
+    return 0;
+  }
+  
+  this_Stack[this_Stack[STACK_POINTER_INDEX]] = item;
+  this_Stack[STACK_POINTER_INDEX] = this_Stack[STACK_POINTER_INDEX] + 1;
+  
+  if(debug){
+    fprintf(stderr, PUSH, this_Stack[STACK_COUNT_INDEX], item);
+  }    
+
+  return 1;
+}
+
+long top (Stack * this_Stack, long * item) {
+  if(this_Stack == NULL){
+    fprintf(stderr, TOP_NONEXIST);
+    return 0;
+  }
+
+  if(item == NULL){
+    fprintf(stderr, INCOMING_NONEXIST);
+    return 0;
+  }
+
+  if(isempty_Stack(this_Stack)){
+    fprintf(stderr, TOP_EMPTY);
+    return 0;
+  }
+
+  *item = this_Stack[this_Stack[STACK_POINTER_INDEX] - 1];
+  
+  if(debug){
+    fprintf(stderr, TOP, this_Stack[STACK_COUNT_INDEX], *item);
+  }
+
+  return 1;
+}
+
+FILE * write_Stack (Stack * this_Stack, FILE * stream) {
+
+        long index = 0;         /* index into the stack */
+
+        if (this_Stack == NULL) {
+                fprintf (stderr, WRITE_NONEXIST_STACK);
+                return stream;
+        }
+
+        if (stream == NULL) {
+                fprintf (stderr, WRITE_NONEXIST_FILE);
+                return stream;
+        }
+                
+        if (stream == stderr)
+                fprintf (stream, "Stack has %ld items in it.\n",
+                        get_occupancy (this_Stack));
+
+        for (index = STACK_COUNT_INDEX + STACK_OFFSET;
+                index < get_occupancy (this_Stack); index++) {
+
+                if (stream == stderr)
+                        fprintf (stream, "Value on stack is |0x%lx|\n",
+                                this_Stack[index]);
+                else {
+                        if (this_Stack[index] < 0)
+                                fprintf (stream, "%c ",
+                                        (char) this_Stack[index]);
+                        else
+                                fprintf (stream, "%ld ", this_Stack[index]);
+                }
+        }
+
+        return stream;
+}

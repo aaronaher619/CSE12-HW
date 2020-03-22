@@ -1,0 +1,425 @@
+/****************************************************************************
+
+                                                        Aaron Hernandez
+                                                        CSE 12, Spring 2017
+                                                        April 25, 2017
+                                                        cs12xcb
+                                Assignment Four
+
+File Name:      calc.c
+Description:    This program reads a math expression from input and then
+                converts it in to postfix form. Then it evaluates the postfix
+                with the different operation functions to print out the
+                result to the user.
+****************************************************************************/
+#include <ctype.h>
+#include <stdio.h>
+#include "calc.h"
+#include "mylib.h"
+#include "stack.h"
+
+#define CHARACTER(word) ((char) ((word) & 0x000000FF))
+#define INDEX(word) (((word) & 0x0000FF00) >> 8)
+#define PRIORITY(word) ((word) & 0x0000FE00)
+#define SIGN_BIT (1L << ((sizeof (long) << 3) - 1))
+
+static char operators[] = "()+-*/^ !";
+
+
+static long add (long, long);
+static long divide (long, long);
+static long exponent (long, long);
+static long fact (long, long);
+static long mult (long, long);
+static long setupword (int);
+static long sub (long, long);
+
+static long (*functions[]) (long, long) =
+    { NULL, NULL, add, sub, mult, divide, exponent, NULL, fact };
+
+/*--------------------------------------------------------------------------
+Function Name:          eval
+Purpose:                takes in the postfix stack and evaluates it to a 
+                        single number.
+Description:            
+Input:                  The stack that has the postfix form
+Result:                 returns the long that the postfix evaluates to.
+--------------------------------------------------------------------------*/
+long eval (Stack * stack1) {
+  long item;
+  long long1;
+  long long2;
+  long operator;
+  long num = 100;/*get_occupancy(stack1)*/
+  Stack *  stack2 = new_Stack(num * sizeof(long));
+  
+  /*reverses the stack1 onto stack2*/
+  while(isempty_Stack(stack1)){
+    top(stack1, &item);
+    pop(stack1, &item);
+    push(stack2, item);
+  }
+
+  top(stack2, &item);
+  long1 = item;
+  pop(stack2, &item);
+  push(stack1, item);
+  /*
+  while(isempty_Stack(stack2)){
+    while(item > 0){
+      top(stack2, &item);
+      long2 = item;
+      pop(stack2, &item);
+      push(stack1, item);
+    }
+    
+    operator = item % 16;
+    operator = operator * 10;
+    item = item / 16;
+    operator = operator + (item % 16);
+
+    
+
+    
+
+
+  }
+  */
+  /*empties the stack once it has been evaluated*/
+  empty_Stack(stack1);
+  /*delete_Stack(&stack1);
+  delete_Stack(&stack2);*/
+  return 0;
+}
+
+/*--------------------------------------------------------------------------  
+Function Name:          intopost
+Purpose:                converts math expressions into postfix form to be
+                        evaluated  
+Description:            Checks for EOF and if expression is finished then
+                        checks if input was a digit or a symbol. Adds to
+			stack1 if a digit and if not does the appropiate
+			thing if it is a symbol.  
+Input:                  The stack where the postfix form will go  
+Result:                 Either return EOF or success of postfix form  
+--------------------------------------------------------------------------*/ 
+long intopost (Stack * stack1) {
+  char character = (char) fgetc(stdin);
+  long num;
+  char stack2[100];
+  int priorities[100];
+  int indexStack2 = 0;
+  int priorityIndex = 0;
+  long word;
+  int i;
+  int priority;
+  int pastPriority = -1;
+  
+  /*checks for EOF*/
+  if(character == EOF){
+    return EOF;
+  }
+
+  /*main loop to transform into postfix*/
+  while(1){
+
+    /*checks for enter key indicating end of expression*/
+    if(character == '\n'){
+      --indexStack2;
+      
+      /*pushs anything remaining to stack1*/
+      for (; indexStack2>=0; --indexStack2){
+        word = setupword((int) stack2[indexStack2]);
+        push(stack1,word);
+      }
+      return 1;
+    }
+
+    /*checks for space and ignores it*/
+    if(character == ' '){
+      character = (char) fgetc(stdin);
+      continue;
+    }
+
+    /*checks if input is a digit*/
+    if(((int)character >= 48) && ((int) character <= 57)){
+      num = (long)character - 48;
+      character = (char) fgetc(stdin);
+
+      /*loop that adds the full number with all its digits to stack1*/
+      while(1){
+
+	/*starts to assemble the number from digits*/
+	if(((int)character >= 48) && ((int) character <= 57)){
+	  num = num * 10;
+	  num = num + ((long) character - 48);
+	  character = (char) fgetc(stdin);
+	  continue;
+	}
+	/*return num to stack1 once no more digits*/
+	else{
+	  push(stack1,num);
+	  break;
+	}
+      }
+      continue;
+    }
+    
+    /*checks for beginning of parentheses and adds it to stack2*/
+    else if(character == '('){
+      stack2[indexStack2] = character;
+      ++indexStack2;
+      priorities[priorityIndex] = 0;
+      ++priorityIndex;
+      character = (char) fgetc(stdin);
+      continue;
+    }
+
+    /*checks for end of parentheses wiht a loop*/
+    else if(character == ')'){
+      while(1){
+	--indexStack2;
+	--priorityIndex;
+
+	/*if stack is empty then stop pushing*/
+        if(indexStack2 < 0){
+          ++indexStack2;
+	  ++priorityIndex;
+          break;
+        }
+	
+	/*checks for beginning of parentheses in order to stop pushing
+	 and assigns values to pastPriority*/
+	if(stack2[indexStack2] == '('){
+	  pastPriority = priorities[priorityIndex-1];
+	  
+	  if(indexStack2 == 0){
+            pastPriority = -1;
+            priorityIndex = 0;
+          }
+	  break;
+	}
+	
+	/*Pushes to stach1 from stack2*/
+	word = setupword(stack2[indexStack2]);
+	push(stack1, word);
+      }
+      character = (char) fgetc(stdin);
+      continue;
+    }
+    
+    else{
+      /*calculates the priority of the symbol*/
+      for(i = 0; i < 9; ++i){
+	if(character == operators[i]){
+	  
+	  /*makes symbols of the same priority have the same priority*/
+	  if((i % 2) == 0){
+	    priority = i;
+	  }
+	  else{
+	    priority = i-1;
+	  }
+	}
+
+	/*Put the priority in an array*/
+	priorities[priorityIndex] = priority;
+	++priorityIndex;
+      }
+      
+      /* Checks if Stack2 is empty or priority is more or the same than pastPriority
+	 and if so updates the pastPriority*/      
+      if((priority >= pastPriority) || (pastPriority == -1)){
+	pastPriority = priorities[priorityIndex-1];
+      }
+
+      /*Checks if the priority is less than pastPriority*/
+      if(priority < pastPriority){
+	if(stack2[indexStack2] != '('){
+
+	/*sends stack2 to stack1*/
+	word = setupword((int) stack2[indexStack2 - 1]);
+	push(stack1, word);
+	--indexStack2;
+	}
+
+	/*Assigns a correct value to pastPriority*/
+	--priorityIndex;
+	if(priorityIndex == 0){
+	  pastPriority = -1;
+	}
+	else{
+	  pastPriority = priorities[priorityIndex];
+	}
+      }
+
+      /*Adds the symbol to stack2 and gets another character from input*/
+      stack2[indexStack2] = character;
+      ++indexStack2;
+      character = (char) fgetc(stdin);
+      
+    }
+  }
+}
+
+static long add (long augend, long addend) {
+    return augend + addend;
+}
+
+static long divide (long divisor, long dividend) {
+    return dividend / divisor;
+}
+
+/*--------------------------------------------------------------------------
+Function Name:          exponent
+Purpose:                multiplies the base by itself x number of times
+Description:            Checks if power is zero and return 1 in case. Then
+                        starts a loop that multiplies the base by itsself
+			x number of times (accoring to power) and then
+			once power equals 1 then it returns the final num.
+Input:                  the base and the power both as longs
+Result:                 returns the number after the math has been done
+--------------------------------------------------------------------------*/
+static long exponent (long power, long base) {
+    long num = base;
+
+    /*checks if power is 0 and return 1*/
+    if(power == 0){
+      return 1;
+    }
+    
+    /*loop that does the exponent math*/
+    for(; power; --power){
+
+      /*if power equals 1 then done doing math*/
+      if(power == 1){
+	return num;
+      }
+
+      /*multiplies the number by itself*/
+      num = num * num;
+    }
+
+    /*returns the finished product*/
+    return num;
+  
+}
+
+/*--------------------------------------------------------------------------
+Function Name:          fact
+Purpose:                multiplies the number by itself minus one until it
+                        reaches 1.
+Description:            Checks if the number is zero and returns 1. Starts
+                        main loop that multiplies the number by itself
+			minus 1 until it is 1 and then return the value.
+Input:                  the number to be factorialized and an ignored number
+Result:                 returns the number after the math has been done
+--------------------------------------------------------------------------*/
+static long fact (long xxx, long ignored) {
+  /*sets the reurn value to the number*/
+    long num = xxx;
+
+    /*checks if the number is 0*/
+    if (xxx == 0){
+      return 1;
+    }
+    
+    /*loop that does the factorial math*/
+    while(1){
+
+      /*checks if the number is one and return the number*/
+      if(num == 1){
+	return num;
+      }
+
+      /*multiplies the return value by itself minus
+	one until it is one*/
+      num = num * (num-1);
+      --num;
+    }
+}
+
+static long mult (long factorx, long factory) {
+    return factorx * factory;
+}
+
+/*--------------------------------------------------------------------------
+Function Name:          setupword
+Purpose:                Makes an operator a specific long to be stored in
+                        stacks.
+Description:            Checks to see what operator the character is then
+                        does the appropiate conversion to a negative long.
+Input:                  the character to be converted into signed long
+Result:                 returns the long the the operator represents
+--------------------------------------------------------------------------*/
+static long setupword (int character) {
+    long num;
+    long index; 
+    signed long operator;
+
+    /*checks to see what operator the character is*/
+    switch((char) character){
+
+      /*converts the operator to a specific signed long*/
+      case '(':
+	num = 40;
+	index = 0;
+	operator = 0x8000000000000028;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case ')':
+	num = 41;
+	index = 1;
+	operator = 0x8000000000000129;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case '+':
+	num = 43;
+	index = 2;
+	operator = 0x800000000000022b;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case '-':
+	num = 45;
+	index = 3;
+	operator = 0x800000000000032d;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case '*':
+	num = 42;
+	index = 4;
+	operator = 0x800000000000042a;
+	break;
+	
+      /*converts the operator to a specific signed long*/
+      case '/':
+	num = 47;
+	index = 5;
+	operator = 0x800000000000052f;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case '^':
+	num = 94;
+	index = 6;
+	operator = 0x800000000000065e;
+	break;
+
+      /*converts the operator to a specific signed long*/
+      case '!':
+	num = 33;
+	index = 8; 
+	operator = 0x8000000000000821;
+	break;
+    }
+    return operator;
+}
+
+static long sub (long subtrahend, long minuend) {
+    return minuend - subtrahend;
+}
+
